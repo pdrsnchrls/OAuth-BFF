@@ -1,0 +1,36 @@
+package com.liferay.oauth.bff.token.request.factory.impl;
+
+import com.liferay.oauth.bff.model.OAuthClient;
+import com.liferay.oauth.bff.token.request.factory.TokenRequestInputFactoryStrategy;
+import com.liferay.oauth.bff.token.request.model.TokenRequestInput;
+import com.liferay.oauth.bff.token.request.model.impl.OidcSessionInput;
+import com.liferay.portal.kernel.security.auth.PrincipalThreadLocal;
+
+import org.osgi.service.component.annotations.Component;
+
+/**
+ * @author Marcel Tanuri
+ */
+@Component(service = TokenRequestInputFactoryStrategy.class)
+public class OidcSessionInputFactoryStrategy
+	implements TokenRequestInputFactoryStrategy {
+
+	@Override
+	public TokenRequestInput create(OAuthClient client) {
+		long userId = PrincipalThreadLocal.getUserId();
+
+		if (userId == 0) {
+			throw new DefaultTokenRequestInputFactory.UnauthorizedException(
+				"User must be authenticated for OIDC session");
+		}
+
+		return new OidcSessionInput(
+			userId, client.getClientId(), client.getAuthEndpoint());
+	}
+
+	@Override
+	public boolean supports(String type) {
+		return "oidc_session".equalsIgnoreCase(type);
+	}
+
+}
