@@ -76,7 +76,21 @@ public class ProxyServiceImpl implements ProxyService {
     }
 
     private URI buildUri(String baseUrl, String path, String query) {
-        return URI.create(baseUrl + (path.startsWith("/") ? path : "/" + path) + (query == null || query.isBlank() ? "" : "?" + query));
+        String sanitizedBaseUrl = baseUrl;
+
+        while (sanitizedBaseUrl.endsWith("/")) {
+            sanitizedBaseUrl = sanitizedBaseUrl.substring(0, sanitizedBaseUrl.length() - 1);
+        }
+
+        StringBuilder uriString = new StringBuilder(sanitizedBaseUrl);
+
+        uriString.append((path.startsWith("/")) ? path : "/" + path);
+
+        if ((query != null) && !query.isBlank()) {
+            uriString.append("?").append(query);
+        }
+
+        return URI.create(uriString.toString());
     }
 
     private String resolveAuthHeader(OAuthClient client, TokenRequestContext context) {
