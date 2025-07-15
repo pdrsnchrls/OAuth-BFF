@@ -7,5 +7,7 @@ import com.liferay.oauthbff.token.request.model.TokenRequestInput;
  * @author Marcel Tanuri
  */
 public interface TokenResolver<T extends TokenRequestInput> {
-    String resolve(T input, TokenRequestContext context);
+
+	public String resolve(T input, TokenRequestContext context);
+
 }

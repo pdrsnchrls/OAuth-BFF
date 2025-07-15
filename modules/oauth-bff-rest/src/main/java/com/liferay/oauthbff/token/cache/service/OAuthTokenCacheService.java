@@ -8,6 +8,13 @@ import java.util.Optional;
  * @author Marcel Tanuri
  */
 public interface OAuthTokenCacheService {
-    Optional<CachedToken> getCachedToken(String providerKey, String ownerType, String ownerId);
-    void saveToken(String providerKey, String ownerType, String ownerId, String accessToken, String refreshToken, String scope, long expiresAt, boolean reuseEnabled);
+
+	public Optional<CachedToken> getCachedToken(
+		String providerKey, String ownerType, String ownerId);
+
+	public void saveToken(
+		String providerKey, String ownerType, String ownerId,
+		String accessToken, String refreshToken, String scope, long expiresAt,
+		boolean reuseEnabled);
+
 }

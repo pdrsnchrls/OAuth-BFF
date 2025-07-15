@@ -6,17 +6,27 @@ import com.liferay.oauthbff.token.request.model.TokenRequestInput;
  * @author Marcel Tanuri
  */
 public class OidcSessionInput implements TokenRequestInput {
-    private final long userId;
-    private final String clientId;
-    private final String wellKnownURI;
 
-    public OidcSessionInput(long userId, String clientId, String wellKnownURI) {
-        this.userId = userId;
-        this.clientId = clientId;
-        this.wellKnownURI = wellKnownURI;
-    }
+	public OidcSessionInput(long userId, String clientId, String wellKnownURI) {
+		_userId = userId;
+		_clientId = clientId;
+		_wellKnownURI = wellKnownURI;
+	}
 
-    public long getUserId() { return userId; }
-    public String getClientId() { return clientId; }
-    public String getWellKnownURI() { return wellKnownURI; }
+	public String getClientId() {
+		return _clientId;
+	}
+
+	public long getUserId() {
+		return _userId;
+	}
+
+	public String getWellKnownURI() {
+		return _wellKnownURI;
+	}
+
+	private final String _clientId;
+	private final long _userId;
+	private final String _wellKnownURI;
+
 }

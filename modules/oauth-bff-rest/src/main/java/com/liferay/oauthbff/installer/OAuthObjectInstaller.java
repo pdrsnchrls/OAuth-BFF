@@ -7,24 +7,30 @@ import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectFieldSetting;
 import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.object.service.ObjectFieldLocalService;
+import com.liferay.object.service.persistence.ObjectFieldSettingPersistence;
 import com.liferay.portal.kernel.cluster.ClusterExecutor;
 import com.liferay.portal.kernel.cluster.ClusterNode;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.util.LocaleUtil;
-import org.osgi.service.component.annotations.Activate;
-import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Reference;
 
 import java.io.InputStream;
+
 import java.nio.charset.StandardCharsets;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * @author Marcel Tanuri
@@ -32,103 +38,136 @@ import java.util.Map;
 @Component(immediate = true, service = OAuthObjectInstaller.class)
 public class OAuthObjectInstaller {
 
-    public static final String PANEL_APP_ORDER = "100";
-    public static final String CATEGORY_OAUTHBFF = "category.oauthbff";
-    public static final String SCOPE = "company";
-    public static final String STORAGE_TYPE = "default";
-    public static final int OBJECT_FOLDER_ID = 0;
-    public static final String JSON_DEFINITION_PATH = "objects/";
-    @Reference
-    private ClusterExecutor clusterExecutor;
-    @Reference
-    private CompanyLocalService companyLocalService;
-    @Reference
-    private UserLocalService userLocalService;
-    @Reference
-    private ListTypeDefinitionLocalService listTypeDefinitionLocalService;
-    @Reference
-    private ListTypeEntryLocalService listTypeEntryLocalService;
-    @Reference
-    private ObjectDefinitionLocalService objectDefinitionLocalService;
-    @Reference
-    private ObjectFieldLocalService objectFieldLocalService;
-    @Reference
-    private com.liferay.object.service.persistence.ObjectFieldSettingPersistence objectFieldSettingPersistence;
+	public static final String CATEGORY_OAUTHBFF = "category.oauthbff";
 
-    @Reference
-    private JSONFactory jsonFactory;
+	public static final String JSON_DEFINITION_PATH = "objects/";
 
-    private long userId;
-    private long companyId;
+	public static final int OBJECT_FOLDER_ID = 0;
 
-    @Activate
-    public void activate() {
-        try {
-            if (clusterExecutor.isEnabled() && !isMasterNode()) return;
+	public static final String PANEL_APP_ORDER = "100";
 
-            Company company = companyLocalService.getCompanies().get(0);
-            companyId = company.getCompanyId();
-            userId = userLocalService.getDefaultUserId(companyId);
+	public static final String SCOPE = "company";
 
-            installPicklist("oauth_client_type_picklist.json");
-            installPicklist("oauth_owner_type_picklist.json");
+	public static final String STORAGE_TYPE = "default";
 
-            installObjectDefinition("oauth_client_object_definition.json");
-            installObjectDefinition("oauth_token_object_definition.json");
+	@Activate
+	public void activate() {
+		try {
+			if (_clusterExecutor.isEnabled() && !_isMasterNode()) {
+				return;
+			}
 
-        } catch (Exception e) {
-            throw new RuntimeException("Erro ao instalar objetos OAuth", e);
-        }
-    }
+			Company company = _companyLocalService.getCompanies(
+			).get(
+				0
+			);
 
-    private void installPicklist(String resourcePath) throws Exception {
-        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(JSON_DEFINITION_PATH + resourcePath)) {
-            if (inputStream == null)
-                throw new IllegalArgumentException("Recurso não encontrado: " + JSON_DEFINITION_PATH + resourcePath);
+			_companyId = company.getCompanyId();
 
-            String json = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-            var jsonObject = jsonFactory.createJSONObject(json);
+			_userId = _userLocalService.getDefaultUserId(_companyId);
 
-            String externalReferenceCode = jsonObject.getString("externalReferenceCode");
-            ListTypeDefinition existing = listTypeDefinitionLocalService.fetchListTypeDefinitionByExternalReferenceCode(externalReferenceCode, companyId);
-            if (existing != null) return;
+			_installPicklist("oauth_client_type_picklist.json");
+			_installPicklist("oauth_owner_type_picklist.json");
 
-            ListTypeDefinition definition = listTypeDefinitionLocalService.addListTypeDefinition(externalReferenceCode, userId, false);
+			_installObjectDefinition("oauth_client_object_definition.json");
+			_installObjectDefinition("oauth_token_object_definition.json");
+		}
+		catch (Exception exception) {
+			throw new RuntimeException(
+				"Erro ao instalar objetos OAuth", exception);
+		}
+	}
 
-            var entries = jsonObject.getJSONArray("listTypeEntries");
-            for (int i = 0; i < entries.length(); i++) {
-                var entry = entries.getJSONObject(i);
-                listTypeEntryLocalService.addListTypeEntry(entry.getString("externalReferenceCode"), userId, definition.getListTypeDefinitionId(), entry.getString("key"), Map.of(LocaleUtil.US, entry.getString("name")));
-            }
-        }
-    }
+	private void _addBasicField(ObjectDefinition def, JSONObject field)
+		throws Exception {
 
-    private void installObjectDefinition(String resourcePath) throws Exception {
-        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(JSON_DEFINITION_PATH + resourcePath)) {
-            if (inputStream == null)
-                throw new IllegalArgumentException("Recurso não encontrado: " + JSON_DEFINITION_PATH + resourcePath);
+		String name = field.getString("name");
+		String type = field.getString("type");
 
-            String json = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-            var jsonObject = jsonFactory.createJSONObject(json);
+		boolean required = false;
 
-            String name = jsonObject.getString("name");
+		if (field.has("required") && field.getBoolean("required")) {
+			required = true;
+		}
 
-            ObjectDefinition existing = null;
+		List<ObjectFieldSetting> settings = new ArrayList<>();
 
-            try {
-                existing = objectDefinitionLocalService.getObjectDefinition(companyId, "C_" + name);
-            } catch (PortalException e) {
-                // log
-            }
+		// Adiciona automaticamente o setting obrigatório para campos DateTime
 
-            if (existing != null) {
-                return; // já existe, não tenta instalar de novo
-            }
+		if (Objects.equals(type, "DateTime")) {
+			ObjectFieldSetting timeStorageSetting =
+				_objectFieldSettingPersistence.create(0L);
 
-            ObjectDefinition objectDefinition = null;
-            try {
-                objectDefinition = objectDefinitionLocalService.addCustomObjectDefinition(
-                        userId,
+			timeStorageSetting.setName("timeStorage");
+			timeStorageSetting.setValue("explicit");
+
+			settings.add(timeStorageSetting);
+		}
+
+		_objectFieldLocalService.addCustomObjectField(
+			null, _userId, 0, def.getObjectDefinitionId(), type, type, false,
+			false, null, Map.of(LocaleUtil.US, name), false, name, "false",
+			null, required, false, settings);
+	}
+
+	private void _addPicklistField(
+			ObjectDefinition def, String name, String listERC, boolean required)
+		throws Exception {
+
+		_objectFieldLocalService.addCustomObjectField(
+			null, _userId,
+			_listTypeDefinitionLocalService.
+				getListTypeDefinitionByExternalReferenceCode(
+					listERC, _companyId
+				).getListTypeDefinitionId(),
+			def.getObjectDefinitionId(), "Picklist", "String", false, false,
+			null, Map.of(LocaleUtil.US, name), false, name, "false", null,
+			required, false, List.of());
+	}
+
+	private void _installObjectDefinition(String resourcePath)
+		throws Exception {
+
+		try (InputStream inputStream = getClass(
+			).getClassLoader(
+			).getResourceAsStream(
+				JSON_DEFINITION_PATH + resourcePath
+			)) {
+
+			if (inputStream == null) {
+				throw new IllegalArgumentException(
+					"Recurso não encontrado: " + JSON_DEFINITION_PATH +
+						resourcePath);
+			}
+
+			String json = new String(
+				inputStream.readAllBytes(), StandardCharsets.UTF_8);
+
+			JSONObject jsonObject = _jsonFactory.createJSONObject(json);
+
+			String name = jsonObject.getString("name");
+
+			ObjectDefinition existing = null;
+
+			try {
+				existing = _objectDefinitionLocalService.getObjectDefinition(
+					_companyId, "C_" + name);
+			}
+			catch (PortalException portalException) {
+
+				// log
+
+			}
+
+			if (existing != null) {
+				return; // já existe, não tenta instalar de novo
+			}
+
+			ObjectDefinition objectDefinition = null;
+
+			try {
+                objectDefinition = _objectDefinitionLocalService.addCustomObjectDefinition(
+						_userId,
                         0,
                         "",
                         false, // enableComments
@@ -147,74 +186,147 @@ public class OAuthObjectInstaller {
                         List.of()
                 );
 
-                var fields = jsonObject.getJSONArray("objectFields");
-                for (int i = 0; i < fields.length(); i++) {
-                    var field = fields.getJSONObject(i);
-                    String filedName = field.getString("name");
-                    String filedType = field.getString("type");
-                    boolean required = field.has("required") && field.getBoolean("required");
+				JSONArray fields = jsonObject.getJSONArray("objectFields");
 
-                    if ("Picklist".equals(filedType)) {
-                        String listERC = field.getString("listTypeDefinitionExternalReferenceCode");
-                        addPicklistField(objectDefinition, filedName, listERC, required);
-                    } else {
-                        addBasicField(objectDefinition, field);
-                    }
-                }
+				for (int i = 0; i < fields.length(); i++) {
+					JSONObject field = fields.getJSONObject(i);
 
-                objectDefinitionLocalService.publishCustomObjectDefinition(userId, objectDefinition.getObjectDefinitionId());
+					String filedName = field.getString("name");
+					String filedType = field.getString("type");
 
+					boolean required = false;
 
-            } catch (Exception ex) {
-                if (objectDefinition != null) {
-                    objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
-                }
-                throw new RuntimeException("Erro ao instalar ObjectDefinition " + name + ": " + ex.getMessage(), ex);
-            }
-        }
-    }
+					if (field.has("required") && field.getBoolean("required")) {
+						required = true;
+					}
 
+					if (Objects.equals(filedType, "Picklist")) {
+						String listERC = field.getString(
+							"listTypeDefinitionExternalReferenceCode");
 
-    private void addBasicField(ObjectDefinition def, JSONObject field) throws Exception {
-        String name = field.getString("name");
-        String type = field.getString("type");
-        boolean required = field.has("required") && field.getBoolean("required");
+						_addPicklistField(
+							objectDefinition, filedName, listERC, required);
+					}
+					else {
+						_addBasicField(objectDefinition, field);
+					}
+				}
 
-        List<ObjectFieldSetting> settings = new ArrayList<>();
+				_objectDefinitionLocalService.publishCustomObjectDefinition(
+					_userId, objectDefinition.getObjectDefinitionId());
+			}
+			catch (Exception exception) {
+				if (objectDefinition != null) {
+					_objectDefinitionLocalService.deleteObjectDefinition(
+						objectDefinition);
+				}
 
-        // Adiciona automaticamente o setting obrigatório para campos DateTime
-        if ("DateTime".equals(type)) {
-            ObjectFieldSetting timeStorageSetting = objectFieldSettingPersistence.create(0L);
-            timeStorageSetting.setName("timeStorage");
-            timeStorageSetting.setValue("explicit");
-            settings.add(timeStorageSetting);
-        }
+				throw new RuntimeException(
+					"Erro ao instalar ObjectDefinition " + name + ": " +
+						exception.getMessage(),
+					exception);
+			}
+		}
+	}
 
-        objectFieldLocalService.addCustomObjectField(
-                null, userId, 0, def.getObjectDefinitionId(),
-                type, type, false, false,
-                null, Map.of(LocaleUtil.US, name),
-                false, name, "false", null, required, false,
-                settings
-        );
-    }
+	private void _installPicklist(String resourcePath) throws Exception {
+		try (InputStream inputStream = getClass(
+			).getClassLoader(
+			).getResourceAsStream(
+				JSON_DEFINITION_PATH + resourcePath
+			)) {
 
+			if (inputStream == null) {
+				throw new IllegalArgumentException(
+					"Recurso não encontrado: " + JSON_DEFINITION_PATH +
+						resourcePath);
+			}
 
-    private void addPicklistField(ObjectDefinition def, String name, String listERC, boolean required) throws Exception {
-        long listTypeDefinitionId = listTypeDefinitionLocalService.getListTypeDefinitionByExternalReferenceCode(listERC, companyId).getListTypeDefinitionId();
+			String json = new String(
+				inputStream.readAllBytes(), StandardCharsets.UTF_8);
 
-        objectFieldLocalService.addCustomObjectField(null, userId, listTypeDefinitionId, def.getObjectDefinitionId(), "Picklist", "String", false, false, null, Map.of(LocaleUtil.US, name), false, name, "false", null, required, false, List.of());
-    }
+			JSONObject jsonObject = _jsonFactory.createJSONObject(json);
 
-    private boolean isMasterNode() {
-        if (!clusterExecutor.isEnabled()) return true;
+			String externalReferenceCode = jsonObject.getString(
+				"externalReferenceCode");
 
-        List<ClusterNode> nodes = clusterExecutor.getClusterNodes();
-        ClusterNode localNode = clusterExecutor.getLocalClusterNode();
+			ListTypeDefinition existing =
+				_listTypeDefinitionLocalService.
+					fetchListTypeDefinitionByExternalReferenceCode(
+						externalReferenceCode, _companyId);
 
-        if (localNode == null || nodes == null || nodes.isEmpty()) return true;
+			if (existing != null) {
+				return;
+			}
 
-        nodes.sort((a, b) -> a.getClusterNodeId().compareTo(b.getClusterNodeId()));
-        return localNode.equals(nodes.get(0));
-    }
+			ListTypeDefinition definition =
+				_listTypeDefinitionLocalService.addListTypeDefinition(
+					externalReferenceCode, _userId, false);
+
+			JSONArray entries = jsonObject.getJSONArray("listTypeEntries");
+
+			for (int i = 0; i < entries.length(); i++) {
+				JSONObject entry = entries.getJSONObject(i);
+
+				_listTypeEntryLocalService.addListTypeEntry(
+					entry.getString("externalReferenceCode"), _userId,
+					definition.getListTypeDefinitionId(),
+					entry.getString("key"),
+					Map.of(LocaleUtil.US, entry.getString("name")));
+			}
+		}
+	}
+
+	private boolean _isMasterNode() {
+		if (!_clusterExecutor.isEnabled()) {
+			return true;
+		}
+
+		List<ClusterNode> nodes = _clusterExecutor.getClusterNodes();
+		ClusterNode localNode = _clusterExecutor.getLocalClusterNode();
+
+		if ((localNode == null) || (nodes == null) || nodes.isEmpty()) {
+			return true;
+		}
+
+		nodes.sort(
+			(a, b) -> a.getClusterNodeId(
+			).compareTo(
+				b.getClusterNodeId()
+			));
+
+		return localNode.equals(nodes.get(0));
+	}
+
+	@Reference
+	private ClusterExecutor _clusterExecutor;
+
+	private long _companyId;
+
+	@Reference
+	private CompanyLocalService _companyLocalService;
+
+	@Reference
+	private JSONFactory _jsonFactory;
+
+	@Reference
+	private ListTypeDefinitionLocalService _listTypeDefinitionLocalService;
+
+	@Reference
+	private ListTypeEntryLocalService _listTypeEntryLocalService;
+
+	@Reference
+	private ObjectDefinitionLocalService _objectDefinitionLocalService;
+
+	@Reference
+	private ObjectFieldLocalService _objectFieldLocalService;
+
+	@Reference
+	private ObjectFieldSettingPersistence _objectFieldSettingPersistence;
+
+	private long _userId;
+
+	@Reference
+	private UserLocalService _userLocalService;
+
 }

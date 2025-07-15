@@ -1,50 +1,49 @@
 {
-  "name": "OAuthToken",
-  "label": {
-    "en_US": "OAuth Token"
-  },
-  "objectFields": [
-    {
-      "name": "providerKey",
-      "type": "String",
-      "required": true
-    },
-    {
-      "name": "ownerType",
-      "type": "Picklist",
-      "required": true,
-      "listTypeDefinitionExternalReferenceCode": "oauthOwnerType"
-    },
-    {
-      "name": "ownerId",
-      "type": "String",
-      "required": true
-    },
-    {
-      "name": "accessToken",
-      "type": "String",
-      "required": true
-    },
-    {
-      "name": "refreshToken",
-      "type": "String",
-      "required": false
-    },
-    {
-      "name": "scope",
-      "type": "String",
-      "required": false
-    },
-    {
-      "name": "expiresAt",
-      "type": "Long",
-      "required": false
-    }
-  ,
-    {
-      "name": "reuseEnabled",
-      "type": "Boolean",
-      "required": false
-    }
-  ]
+	"label": {
+		"en_US": "OAuth Token"
+	},
+	"name": "OAuthToken",
+	"objectFields": [
+		{
+			"name": "providerKey",
+			"required": true,
+			"type": "String"
+		},
+		{
+			"listTypeDefinitionExternalReferenceCode": "oauthOwnerType",
+			"name": "ownerType",
+			"required": true,
+			"type": "Picklist"
+		},
+		{
+			"name": "ownerId",
+			"required": true,
+			"type": "String"
+		},
+		{
+			"name": "accessToken",
+			"required": true,
+			"type": "String"
+		},
+		{
+			"name": "refreshToken",
+			"required": false,
+			"type": "String"
+		},
+		{
+			"name": "scope",
+			"required": false,
+			"type": "String"
+		},
+		{
+			"name": "expiresAt",
+			"required": false,
+			"type": "Long"
+		},
+		{
+			"name": "reuseEnabled",
+			"required": false,
+			"type": "Boolean"
+		}
+	]
 }

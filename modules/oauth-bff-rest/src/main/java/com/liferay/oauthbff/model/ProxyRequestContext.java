@@ -1,105 +1,122 @@
 package com.liferay.oauthbff.model;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.UriInfo;
 import java.io.InputStream;
 
+import javax.servlet.http.HttpServletRequest;
+
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.UriInfo;
+
+/**
+ * @author Marcel Tanuri
+ */
 public class ProxyRequestContext {
 
-    private final String method;
-    private final String path;
-    private final String queryString;
-    private final HttpHeaders headers;
-    private final InputStream body;
-    private final HttpServletRequest servletRequest;
-    private final UriInfo uriInfo;
+	public InputStream getBody() {
+		return _body;
+	}
 
-    private ProxyRequestContext(Builder builder) {
-        this.method = builder.method;
-        this.path = builder.path;
-        this.queryString = builder.queryString;
-        this.headers = builder.headers;
-        this.body = builder.body;
-        this.servletRequest = builder.servletRequest;
-        this.uriInfo = builder.uriInfo;
-    }
+	public HttpHeaders getHeaders() {
+		return _headers;
+	}
 
-    public String getMethod() {
-        return method;
-    }
+	public String getMethod() {
+		return _method;
+	}
 
-    public String getPath() {
-        return path;
-    }
+	public String getPath() {
+		return _path;
+	}
 
-    public String getQueryString() {
-        return queryString;
-    }
+	public String getQueryString() {
+		return _queryString;
+	}
 
-    public HttpHeaders getHeaders() {
-        return headers;
-    }
+	public HttpServletRequest getServletRequest() {
+		return _servletRequest;
+	}
 
-    public InputStream getBody() {
-        return body;
-    }
+	public UriInfo getUriInfo() {
+		return _uriInfo;
+	}
 
-    public HttpServletRequest getServletRequest() {
-        return servletRequest;
-    }
+	public static class Builder {
 
-    public UriInfo getUriInfo() {
-        return uriInfo;
-    }
+		public Builder body(InputStream body) {
+			_body = body;
 
-    // 🔨 Fluent Builder
-    public static class Builder {
-        private String method;
-        private String path;
-        private String queryString;
-        private HttpHeaders headers;
-        private InputStream body;
-        private HttpServletRequest servletRequest;
-        private UriInfo uriInfo;
+			return this;
+		}
 
-        public Builder method(String method) {
-            this.method = method;
-            return this;
-        }
+		public ProxyRequestContext build() {
+			return new ProxyRequestContext(this);
+		}
 
-        public Builder path(String path) {
-            this.path = path;
-            return this;
-        }
+		public Builder headers(HttpHeaders headers) {
+			_headers = headers;
 
-        public Builder queryString(String queryString) {
-            this.queryString = queryString;
-            return this;
-        }
+			return this;
+		}
 
-        public Builder headers(HttpHeaders headers) {
-            this.headers = headers;
-            return this;
-        }
+		public Builder method(String method) {
+			_method = method;
 
-        public Builder body(InputStream body) {
-            this.body = body;
-            return this;
-        }
+			return this;
+		}
 
-        public Builder servletRequest(HttpServletRequest servletRequest) {
-            this.servletRequest = servletRequest;
-            return this;
-        }
+		public Builder path(String path) {
+			_path = path;
 
-        public Builder uriInfo(UriInfo uriInfo) {
-            this.uriInfo = uriInfo;
-            return this;
-        }
+			return this;
+		}
 
-        public ProxyRequestContext build() {
-            return new ProxyRequestContext(this);
-        }
-    }
+		public Builder queryString(String queryString) {
+			_queryString = queryString;
+
+			return this;
+		}
+
+		public Builder servletRequest(HttpServletRequest servletRequest) {
+			_servletRequest = servletRequest;
+
+			return this;
+		}
+
+		public Builder uriInfo(UriInfo uriInfo) {
+			_uriInfo = uriInfo;
+
+			return this;
+		}
+
+		private InputStream _body;
+		private HttpHeaders _headers;
+		private String _method;
+		private String _path;
+		private String _queryString;
+		private HttpServletRequest _servletRequest;
+		private UriInfo _uriInfo;
+
+	}
+
+	private ProxyRequestContext(Builder builder) {
+		_method = builder._method;
+		_path = builder._path;
+		_queryString = builder._queryString;
+		_headers = builder._headers;
+		_body = builder._body;
+		_servletRequest = builder._servletRequest;
+		_uriInfo = builder._uriInfo;
+	}
+
+	private final InputStream _body;
+	private final HttpHeaders _headers;
+	private final String _method;
+	private final String _path;
+	private final String _queryString;
+	private final HttpServletRequest _servletRequest;
+
+	// 🔨 Fluent Builder
+
+	private final UriInfo _uriInfo;
+
 }

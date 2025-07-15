@@ -10,8 +10,10 @@ import java.util.Locale;
  */
 public class DTOContextUtil {
 
-    public static DefaultDTOConverterContext contextWithDefaultUser(long companyId) {
-        try {
+	public static DefaultDTOConverterContext contextWithDefaultUser(
+		long companyId) {
+
+		try {
             return new DefaultDTOConverterContext(
                     false,                 // acceptAllLanguages
                     new HashMap<>(),       // actions
@@ -22,8 +24,12 @@ public class DTOContextUtil {
                     null,                  // uriInfo
                     null                   // user
             );
-        } catch (Exception e) {
-            throw new RuntimeException("Unable to obtain default user for companyId=" + companyId, e);
-        }
-    }
+		}
+		catch (Exception exception) {
+			throw new RuntimeException(
+				"Unable to obtain default user for companyId=" + companyId,
+				exception);
+		}
+	}
+
 }

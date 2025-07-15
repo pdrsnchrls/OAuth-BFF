@@ -7,6 +7,9 @@ import com.liferay.oauthbff.token.request.model.TokenRequestInput;
  * @author Marcel Tanuri
  */
 public interface TokenRequestInputFactoryStrategy {
-    boolean supports(String type);
-    TokenRequestInput create(OAuthClient client);
+
+	public TokenRequestInput create(OAuthClient client);
+
+	public boolean supports(String type);
+
 }

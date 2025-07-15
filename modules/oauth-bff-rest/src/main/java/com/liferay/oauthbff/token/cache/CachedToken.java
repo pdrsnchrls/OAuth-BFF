@@ -4,42 +4,52 @@ package com.liferay.oauthbff.token.cache;
  * @author Marcel Tanuri
  */
 public class CachedToken {
-    private final String accessToken;
-    private final String refreshToken;
-    private final String scope;
-    private final long expiresAt;
-    private final boolean reuseEnabled;
 
-    public CachedToken(String accessToken, String refreshToken, String scope, long expiresAt, boolean reuseEnabled) {
-        this.accessToken = accessToken;
-        this.refreshToken = refreshToken;
-        this.scope = scope;
-        this.expiresAt = expiresAt;
-        this.reuseEnabled = reuseEnabled;
-    }
+	public CachedToken(
+		String accessToken, String refreshToken, String scope, long expiresAt,
+		boolean reuseEnabled) {
 
-    public String getAccessToken() {
-        return accessToken;
-    }
+		_accessToken = accessToken;
+		_refreshToken = refreshToken;
+		_scope = scope;
+		_expiresAt = expiresAt;
+		_reuseEnabled = reuseEnabled;
+	}
 
-    public String getRefreshToken() {
-        return refreshToken;
-    }
+	public String getAccessToken() {
+		return _accessToken;
+	}
 
-    public String getScope() {
-        return scope;
-    }
+	public long getExpiresAt() {
+		return _expiresAt;
+	}
 
-    public long getExpiresAt() {
-        return expiresAt;
-    }
+	public String getRefreshToken() {
+		return _refreshToken;
+	}
 
-    public boolean isReuseEnabled() {
-        return reuseEnabled;
-    }
+	public String getScope() {
+		return _scope;
+	}
 
-    public boolean isExpired() {
-        long bufferMillis = 30 * 1000; // 30-second buffer
-        return System.currentTimeMillis() > (expiresAt - bufferMillis);
-    }
+	public boolean isExpired() {
+		long bufferMillis = 30 * 1000; // 30-second buffer
+
+		if (System.currentTimeMillis() > (_expiresAt - bufferMillis)) {
+			return true;
+		}
+
+		return false;
+	}
+
+	public boolean isReuseEnabled() {
+		return _reuseEnabled;
+	}
+
+	private final String _accessToken;
+	private final long _expiresAt;
+	private final String _refreshToken;
+	private final boolean _reuseEnabled;
+	private final String _scope;
+
 }

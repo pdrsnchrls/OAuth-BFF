@@ -8,52 +8,79 @@ import java.util.stream.Collectors;
  * @author Marcel Tanuri
  */
 public class OAuthClient {
-    private final String clientId;
-    private final String clientSecret;
-    private final String tokenEndpoint;
-    private final String authEndpoint;
-    private final String type;
-    private final String baseURL;
-    private final String allowedEndpoints;
 
-    public OAuthClient(
-            String clientId,
-            String clientSecret,
-            String tokenEndpoint,
-            String authEndpoint,
-            String type,
-            String baseURL,
-            String allowedEndpoints
-    ) {
-        this.clientId = clientId;
-        this.clientSecret = clientSecret;
-        this.tokenEndpoint = tokenEndpoint;
-        this.authEndpoint = authEndpoint;
-        this.type = type;
-        this.baseURL = baseURL;
-        this.allowedEndpoints = allowedEndpoints;
-    }
+	public OAuthClient(
+		String clientId, String clientSecret, String tokenEndpoint,
+		String authEndpoint, String type, String baseURL,
+		String allowedEndpoints) {
 
-    public String getClientId() { return clientId; }
-    public String getClientSecret() { return clientSecret; }
-    public String getTokenEndpoint() { return tokenEndpoint; }
-    public String getAuthEndpoint() { return authEndpoint; }
-    public String getType() { return type; }
-    public String getBaseURL() { return baseURL; }
-    public String getAllowedEndpointsRaw() { return allowedEndpoints; }
+		_clientId = clientId;
+		_clientSecret = clientSecret;
+		_tokenEndpoint = tokenEndpoint;
+		_authEndpoint = authEndpoint;
+		_type = type;
+		_baseURL = baseURL;
+		_allowedEndpoints = allowedEndpoints;
+	}
 
-    public List<String> getAllowedEndpoints() {
-        if (allowedEndpoints == null || allowedEndpoints.isBlank()) {
-            return List.of();
-        }
+	public List<String> getAllowedEndpoints() {
+		if ((_allowedEndpoints == null) || _allowedEndpoints.isBlank()) {
+			return List.of();
+		}
 
-        return Arrays.stream(allowedEndpoints.split("\\r?\\n"))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toList());
-    }
+		return Arrays.stream(
+			_allowedEndpoints.split("\\r?\\n")
+		).map(
+			String::trim
+		).filter(
+			s -> !s.isEmpty()
+		).collect(
+			Collectors.toList()
+		);
+	}
 
-    public boolean isEndpointAllowed(String proxyPath) {
-        return getAllowedEndpoints().stream().anyMatch(proxyPath::startsWith);
-    }
+	public String getAllowedEndpointsRaw() {
+		return _allowedEndpoints;
+	}
+
+	public String getAuthEndpoint() {
+		return _authEndpoint;
+	}
+
+	public String getBaseURL() {
+		return _baseURL;
+	}
+
+	public String getClientId() {
+		return _clientId;
+	}
+
+	public String getClientSecret() {
+		return _clientSecret;
+	}
+
+	public String getTokenEndpoint() {
+		return _tokenEndpoint;
+	}
+
+	public String getType() {
+		return _type;
+	}
+
+	public boolean isEndpointAllowed(String proxyPath) {
+		return getAllowedEndpoints(
+		).stream(
+		).anyMatch(
+			proxyPath::startsWith
+		);
+	}
+
+	private final String _allowedEndpoints;
+	private final String _authEndpoint;
+	private final String _baseURL;
+	private final String _clientId;
+	private final String _clientSecret;
+	private final String _tokenEndpoint;
+	private final String _type;
+
 }

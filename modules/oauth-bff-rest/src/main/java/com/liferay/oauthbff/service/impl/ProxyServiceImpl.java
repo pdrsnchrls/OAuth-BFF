@@ -7,109 +7,183 @@ import com.liferay.oauthbff.service.ProxyService;
 import com.liferay.oauthbff.token.request.model.TokenRequestContext;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
-import org.osgi.service.component.annotations.ReferencePolicy;
 
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import java.io.InputStream;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+
+import java.nio.charset.StandardCharsets;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.InflaterInputStream;
 
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
+
+/**
+ * @author Marcel Tanuri
+ */
 @Component(service = ProxyService.class)
 public class ProxyServiceImpl implements ProxyService {
 
-    private static final Log _log = LogFactoryUtil.getLog(ProxyServiceImpl.class);
+	@Override
+	public Response forward(OAuthClient client, ProxyRequestContext ctx)
+		throws Exception {
 
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+		String authHeader = _resolveAuthHeader(
+			client, new TokenRequestContext());
 
-    @Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
-    private final List<AuthenticationStrategy> authenticationStrategies = new ArrayList<>();
+		URI targetURI = _buildUri(
+			client.getBaseURL(), ctx.getPath(), ctx.getQueryString());
 
-    @Override
-    public Response forward(OAuthClient client, ProxyRequestContext ctx) throws Exception {
-        TokenRequestContext tokenContext = new TokenRequestContext();
-        String authHeader = resolveAuthHeader(client, tokenContext);
+		_log.info("Proxying request to: {" + targetURI + "}");
 
-        URI targetUri = buildUri(client.getBaseURL(), ctx.getPath(), ctx.getQueryString());
+		HttpRequest.BodyPublisher bodyPublisher = _createBodyPublisher(
+			ctx.getBody());
 
-        _log.info("Proxying request to: {" + targetUri + "}");
+		HttpRequest.Builder proxyHttpRequest = HttpRequest.newBuilder(
+		).uri(
+			targetURI
+		).method(
+			ctx.getMethod(), bodyPublisher
+		).header(
+			"Authorization", authHeader
+		).header(
+			"Accept-Encoding", "gzip, deflate"
+		);
 
-        HttpRequest.BodyPublisher bodyPublisher = createBodyPublisher(ctx.getBody());
+		_copyHeaders(ctx, proxyHttpRequest);
 
-        HttpRequest.Builder proxyHttpRequest = HttpRequest.newBuilder()
-                .uri(targetUri)
-                .method(ctx.getMethod(), bodyPublisher)
-                .header("Authorization", authHeader)
-                .header("Accept-Encoding", "gzip, deflate");
+		HttpResponse<InputStream> response = _httpClient.send(
+			proxyHttpRequest.build(),
+			HttpResponse.BodyHandlers.ofInputStream());
 
-        copyHeaders(ctx, proxyHttpRequest);
+		InputStream responseStream = response.body();
+		String encoding = response.headers(
+		).firstValue(
+			"Content-Encoding"
+		).orElse(
+			""
+		);
 
-        HttpResponse<InputStream> response = httpClient.send(
-                proxyHttpRequest.build(),
-                HttpResponse.BodyHandlers.ofInputStream()
-        );
+		if ("gzip".equalsIgnoreCase(encoding)) {
+			responseStream = new GZIPInputStream(responseStream);
+		}
+		else if ("deflate".equalsIgnoreCase(encoding)) {
+			responseStream = new InflaterInputStream(responseStream);
+		}
 
-        InputStream responseStream = response.body();
-        String encoding = response.headers().firstValue("Content-Encoding").orElse("");
+		String responseBody = new String(
+			responseStream.readAllBytes(), StandardCharsets.UTF_8);
 
-        if ("gzip".equalsIgnoreCase(encoding)) {
-            responseStream = new GZIPInputStream(responseStream);
-        } else if ("deflate".equalsIgnoreCase(encoding)) {
-            responseStream = new InflaterInputStream(responseStream);
-        }
+		return Response.status(
+			response.statusCode()
+		).entity(
+			responseBody
+		).type(
+			response.headers(
+			).firstValue(
+				"Content-Type"
+			).orElse(
+				MediaType.APPLICATION_JSON
+			)
+		).build();
+	}
 
-        String responseBody = new String(responseStream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+	protected void addAuthenticationStrategy(AuthenticationStrategy strategy) {
+		_authenticationStrategies.add(strategy);
+	}
 
-        return Response.status(response.statusCode())
-                .entity(responseBody)
-                .type(response.headers().firstValue("Content-Type").orElse(MediaType.APPLICATION_JSON))
-                .build();
-    }
+	protected void removeAuthenticationStrategy(
+		AuthenticationStrategy strategy) {
 
-    private URI buildUri(String baseUrl, String path, String query) {
-        return URI.create(baseUrl + (path.startsWith("/") ? path : "/" + path) + (query == null || query.isBlank() ? "" : "?" + query));
-    }
+		_authenticationStrategies.remove(strategy);
+	}
 
-    private String resolveAuthHeader(OAuthClient client, TokenRequestContext context) {
-        return authenticationStrategies.stream()
-                .filter(strategy -> strategy.supports(client.getType()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Unsupported auth type: " + client.getType()))
-                .getAuthorizationHeader(client, context);
-    }
+	private URI _buildUri(String baseUrl, String path, String query) {
+		return URI.create(
+			baseUrl + (path.startsWith("/") ? path : "/" + path) +
+				((query == null) || query.isBlank() ? "" : "?" + query));
+	}
 
-    private HttpRequest.BodyPublisher createBodyPublisher(InputStream body) throws Exception {
-        if (body == null) return HttpRequest.BodyPublishers.noBody();
-        byte[] bytes = body.readAllBytes();
-        return bytes.length > 0 ? HttpRequest.BodyPublishers.ofByteArray(bytes) : HttpRequest.BodyPublishers.noBody();
-    }
+	private void _copyHeaders(
+		ProxyRequestContext ctx, HttpRequest.Builder builder) {
 
-    private void copyHeaders(ProxyRequestContext ctx, HttpRequest.Builder builder) {
-        ctx.getHeaders().getRequestHeaders().entrySet().stream()
-                .filter(entry -> !entry.getKey().equalsIgnoreCase("Authorization")
-                        && !entry.getKey().equalsIgnoreCase("Host")
-                        && !entry.getKey().equalsIgnoreCase("Connection"))
-                .forEach(entry ->
-                        entry.getValue().forEach(value ->
-                                builder.header(entry.getKey(), value)
-                        )
-                );
-    }
+		ctx.getHeaders(
+		).getRequestHeaders(
+		).entrySet(
+		).stream(
+		).filter(
+			entry ->
+				!entry.getKey(
+				).equalsIgnoreCase(
+					"Authorization"
+				) &&
+				!entry.getKey(
+				).equalsIgnoreCase(
+					"Host"
+				) &&
+				!entry.getKey(
+				).equalsIgnoreCase(
+					"Connection"
+				)
+		).forEach(
+			entry -> entry.getValue(
+			).forEach(
+				value -> builder.header(entry.getKey(), value)
+			)
+		);
+	}
 
-    protected void addAuthenticationStrategy(AuthenticationStrategy strategy) {
-        authenticationStrategies.add(strategy);
-    }
+	private HttpRequest.BodyPublisher _createBodyPublisher(InputStream body)
+		throws Exception {
 
-    protected void removeAuthenticationStrategy(AuthenticationStrategy strategy) {
-        authenticationStrategies.remove(strategy);
-    }
+		if (body == null) {
+			return HttpRequest.BodyPublishers.noBody();
+		}
+
+		byte[] bytes = body.readAllBytes();
+
+		return (bytes.length > 0) ?
+			HttpRequest.BodyPublishers.ofByteArray(bytes) :
+				HttpRequest.BodyPublishers.noBody();
+	}
+
+	private String _resolveAuthHeader(
+		OAuthClient client, TokenRequestContext context) {
+
+		return _authenticationStrategies.stream(
+		).filter(
+			strategy -> strategy.supports(client.getType())
+		).findFirst(
+		).orElseThrow(
+			() -> new IllegalArgumentException(
+				"Unsupported auth type: " + client.getType())
+		).getAuthorizationHeader(
+			client, context
+		);
+	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		ProxyServiceImpl.class);
+
+	@Reference(
+		cardinality = ReferenceCardinality.MULTIPLE,
+		policy = ReferencePolicy.DYNAMIC
+	)
+	private volatile List<AuthenticationStrategy> _authenticationStrategies =
+		new ArrayList<>();
+
+	private final HttpClient _httpClient = HttpClient.newHttpClient();
+
 }

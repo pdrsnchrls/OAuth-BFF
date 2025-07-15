@@ -13,13 +13,14 @@ import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
-import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Reference;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * @author Marcel Tanuri
@@ -27,82 +28,123 @@ import java.util.Optional;
 @Component(service = OAuthTokenCacheService.class)
 public class OAuthTokenCacheServiceImpl implements OAuthTokenCacheService {
 
-    private static final Log _log = LogFactoryUtil.getLog(OAuthTokenCacheServiceImpl.class);
+	@Override
+	public Optional<CachedToken> getCachedToken(
+		String providerKey, String ownerType, String ownerId) {
 
-    private static final String OAUTH_TOKEN = "C_OAuthToken";
-    @Reference
-    private ObjectEntryManagerRegistry _objectEntryManagerRegistry;
-    @Reference
-    private ObjectDefinitionLocalService _objectDefinitionLocalService;
+		try {
+			long companyId = CompanyThreadLocal.getCompanyId();
 
-    @Override
-    public Optional<CachedToken> getCachedToken(String providerKey, String ownerType, String ownerId) {
-        try {
-            long companyId = CompanyThreadLocal.getCompanyId();
+			ObjectDefinition objectDefinition =
+				_objectDefinitionLocalService.fetchObjectDefinition(
+					companyId, _OAUTH_TOKEN);
 
-            ObjectDefinition objectDefinition = _objectDefinitionLocalService.fetchObjectDefinition(companyId, OAUTH_TOKEN);
+			if (objectDefinition == null) {
+				_log.warn(
+					"Object Definition for OAuthToken not found. Cannot " +
+						"retrieve cached token.");
 
-            if (objectDefinition == null) {
-                _log.warn(
-                        "Object Definition for OAuthToken not found. Cannot retrieve cached token.");
-                return Optional.empty();
-            }
+				return Optional.empty();
+			}
 
-            ObjectEntryManager manager = _objectEntryManagerRegistry.getObjectEntryManager(objectDefinition.getStorageType());
+			ObjectEntryManager manager =
+				_objectEntryManagerRegistry.getObjectEntryManager(
+					objectDefinition.getStorageType());
 
-            String filter = String.format("providerKey eq '%s' and ownerType eq '%s' and ownerId eq '%s'", providerKey, ownerType, ownerId);
+			String filter = String.format(
+				"providerKey eq '%s' and ownerType eq '%s' and ownerId eq '%s'",
+				providerKey, ownerType, ownerId);
 
+			Page<ObjectEntry> page = manager.getObjectEntries(
+				companyId, objectDefinition, null, null,
+				DTOContextUtil.contextWithDefaultUser(companyId), filter,
+				Pagination.of(1, 1), null, null);
 
-            Page<ObjectEntry> page = manager.getObjectEntries(companyId, objectDefinition, null, null, DTOContextUtil.contextWithDefaultUser(companyId), filter, Pagination.of(1, 1), null, null);
+			List<ObjectEntry> items = (List<ObjectEntry>)page.getItems();
 
-            List<ObjectEntry> items = (List<ObjectEntry>) page.getItems();
-            if (!items.isEmpty()) {
-                ObjectEntry entry = items.get(0);
-                Map<String, Object> props = entry.getProperties();
+			if (!items.isEmpty()) {
+				ObjectEntry entry = items.get(0);
 
-                return Optional.of(new CachedToken((String) props.get("accessToken"), (String) props.get("refreshToken"), (String) props.get("scope"), ((Number) props.get("expiresAt")).longValue(), (Boolean) props.getOrDefault("reuseEnabled", false)));
-            }
+				Map<String, Object> props = entry.getProperties();
 
-        } catch (Exception e) {
-            _log.error(e);
-        }
+				Number expiresAt = (Number)props.get("expiresAt");
 
-        return Optional.empty();
-    }
+				return Optional.of(
+					new CachedToken(
+						(String)props.get("accessToken"),
+						(String)props.get("refreshToken"),
+						(String)props.get("scope"), expiresAt.longValue(),
+						(Boolean)props.getOrDefault("reuseEnabled", false)));
+			}
+		}
+		catch (Exception exception) {
+			_log.error(exception);
+		}
 
-    @Override
-    public void saveToken(String providerKey, String ownerType, String ownerId, String accessToken, String refreshToken, String scope, long expiresAt, boolean reuseEnabled) {
-        try {
-            long companyId = CompanyThreadLocal.getCompanyId();
+		return Optional.empty();
+	}
 
-            ObjectDefinition objectDefinition = _objectDefinitionLocalService.fetchObjectDefinition(companyId, OAUTH_TOKEN);
+	@Override
+	public void saveToken(
+		String providerKey, String ownerType, String ownerId,
+		String accessToken, String refreshToken, String scope, long expiresAt,
+		boolean reuseEnabled) {
 
-            if (objectDefinition == null) {
-                _log.warn("Object Definition for '" + OAUTH_TOKEN + "' not found. Cannot save token.");
-                return;
-            }
+		try {
+			long companyId = CompanyThreadLocal.getCompanyId();
 
-            ObjectEntryManager manager = _objectEntryManagerRegistry.getObjectEntryManager(objectDefinition.getStorageType());
+			ObjectDefinition objectDefinition =
+				_objectDefinitionLocalService.fetchObjectDefinition(
+					companyId, _OAUTH_TOKEN);
 
-            Map<String, Object> properties = new HashMap<>();
-            properties.put("providerKey", providerKey);
-            properties.put("ownerType", ownerType);
-            properties.put("ownerId", ownerId);
-            properties.put("accessToken", accessToken);
-            properties.put("refreshToken", refreshToken);
-            properties.put("scope", scope);
-            properties.put("expiresAt", expiresAt);
-            properties.put("reuseEnabled", reuseEnabled);
+			if (objectDefinition == null) {
+				_log.warn(
+					"Object Definition for '" + _OAUTH_TOKEN +
+						"' not found. Cannot save token.");
 
-            ObjectEntry entry = new ObjectEntry();
+				return;
+			}
 
-            entry.setProperties(properties);
+			ObjectEntryManager manager =
+				_objectEntryManagerRegistry.getObjectEntryManager(
+					objectDefinition.getStorageType());
 
-            ObjectEntry entrySaved = manager.addObjectEntry(DTOContextUtil.contextWithDefaultUser(companyId), objectDefinition, entry, null);
+			Map<String, Object> properties = new HashMap<>();
 
-            _log.info(entrySaved.getId());
-        } catch (Exception e) {
-            _log.info("Error while accessing or persisting OAuth token", e);
-        }
-    }
+			properties.put("accessToken", accessToken);
+			properties.put("expiresAt", expiresAt);
+			properties.put("ownerId", ownerId);
+			properties.put("ownerType", ownerType);
+			properties.put("providerKey", providerKey);
+			properties.put("refreshToken", refreshToken);
+			properties.put("reuseEnabled", reuseEnabled);
+			properties.put("scope", scope);
+
+			ObjectEntry entry = new ObjectEntry();
+
+			entry.setProperties(properties);
+
+			ObjectEntry entrySaved = manager.addObjectEntry(
+				DTOContextUtil.contextWithDefaultUser(companyId),
+				objectDefinition, entry, null);
+
+			_log.info(entrySaved.getId());
+		}
+		catch (Exception exception) {
+			_log.info(
+				"Error while accessing or persisting OAuth token", exception);
+		}
+	}
+
+	private static final String _OAUTH_TOKEN = "C_OAuthToken";
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		OAuthTokenCacheServiceImpl.class);
+
+	@Reference
+	private ObjectDefinitionLocalService _objectDefinitionLocalService;
+
+	@Reference
+	private ObjectEntryManagerRegistry _objectEntryManagerRegistry;
+
 }

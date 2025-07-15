@@ -4,14 +4,22 @@ package com.liferay.oauthbff.token.request.model;
  * @author Marcel Tanuri
  */
 public class TokenRequestContext {
-    private long companyId;
 
-    public TokenRequestContext() {}
+	public TokenRequestContext() {
+	}
 
-    public TokenRequestContext(long companyId) {
-        this.companyId = companyId;
-    }
+	public TokenRequestContext(long companyId) {
+		_companyId = companyId;
+	}
 
-    public long getCompanyId() { return companyId; }
-    public void setCompanyId(long companyId) { this.companyId = companyId; }
+	public long getCompanyId() {
+		return _companyId;
+	}
+
+	public void setCompanyId(long companyId) {
+		_companyId = companyId;
+	}
+
+	private long _companyId;
+
 }

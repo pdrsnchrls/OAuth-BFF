@@ -5,6 +5,7 @@ import com.liferay.oauthbff.resolver.token.TokenResolverRegistry;
 import com.liferay.oauthbff.token.request.model.TokenRequestInput;
 import com.liferay.oauthbff.token.request.model.impl.ClientCredentialsInput;
 import com.liferay.oauthbff.token.request.model.impl.OidcSessionInput;
+
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
@@ -14,20 +15,25 @@ import org.osgi.service.component.annotations.Reference;
 @Component(service = TokenResolverRegistry.class)
 public class TokenResolverRegistryImpl implements TokenResolverRegistry {
 
-    @Reference(target = "(resolver.type=client_credentials)")
-    private TokenResolver<ClientCredentialsInput> clientCredentialsTokenResolver;
+	@Override
+	@SuppressWarnings("unchecked")
+	public <T extends TokenRequestInput> TokenResolver<T> getResolver(T input) {
+		if (input instanceof ClientCredentialsInput) {
+			return (TokenResolver<T>)_clientCredentialsTokenResolver;
+		}
+		else if (input instanceof OidcSessionInput) {
+			return (TokenResolver<T>)_oidcSessionTokenResolver;
+		}
 
-    @Reference(target = "(resolver.type=client_credentials)")
-    private TokenResolver<OidcSessionInput> oidcSessionTokenResolver;
+		throw new IllegalArgumentException(
+			"Unsupported input type: " + input.getClass());
+	}
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public <T extends TokenRequestInput> TokenResolver<T> getResolver(T input) {
-        if (input instanceof ClientCredentialsInput) {
-            return (TokenResolver<T>) clientCredentialsTokenResolver;
-        } else if (input instanceof OidcSessionInput) {
-            return (TokenResolver<T>) oidcSessionTokenResolver;
-        }
-        throw new IllegalArgumentException("Unsupported input type: " + input.getClass());
-    }
+	@Reference(target = "(resolver.type=client_credentials)")
+	private TokenResolver<ClientCredentialsInput>
+		_clientCredentialsTokenResolver;
+
+	@Reference(target = "(resolver.type=client_credentials)")
+	private TokenResolver<OidcSessionInput> _oidcSessionTokenResolver;
+
 }

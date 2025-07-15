@@ -1,74 +1,74 @@
 {
-  "name": "OAuthClient",
-  "label": {
-    "en_US": "OAuth Client"
-  },
-  "objectFields": [
-    {
-      "name": "name",
-      "type": "String",
-      "required": true
-    },
-    {
-      "name": "baseURL",
-      "type": "String",
-      "required": true
-    },
-    {
-      "name": "alias",
-      "type": "String",
-      "required": true
-    },
-    {
-      "name": "type",
-      "type": "Picklist",
-      "required": true,
-      "listTypeDefinitionExternalReferenceCode": "oauthClientType"
-    },
-    {
-      "name": "clientId",
-      "type": "String",
-      "required": true
-    },
-    {
-      "name": "clientSecret",
-      "type": "String",
-      "required": false
-    },
-    {
-      "name": "authEndpoint",
-      "type": "String",
-      "required": false
-    },
-    {
-      "name": "tokenEndpoint",
-      "type": "String",
-      "required": false
-    },
-    {
-      "name": "redirectUri",
-      "type": "String",
-      "required": false
-    },
-    {
-      "name": "scopes",
-      "type": "String",
-      "required": false
-    },
-    {
-      "name": "allowedEndpoints",
-      "type": "LongText",
-      "required": true
-    },
-    {
-      "name": "tokenReuseEnabled",
-      "type": "Boolean",
-      "required": false
-    },
-    {
-      "name": "enabled",
-      "type": "Boolean",
-      "required": true
-    }
-  ]
+	"label": {
+		"en_US": "OAuth Client"
+	},
+	"name": "OAuthClient",
+	"objectFields": [
+		{
+			"name": "name",
+			"required": true,
+			"type": "String"
+		},
+		{
+			"name": "baseURL",
+			"required": true,
+			"type": "String"
+		},
+		{
+			"name": "alias",
+			"required": true,
+			"type": "String"
+		},
+		{
+			"listTypeDefinitionExternalReferenceCode": "oauthClientType",
+			"name": "type",
+			"required": true,
+			"type": "Picklist"
+		},
+		{
+			"name": "clientId",
+			"required": true,
+			"type": "String"
+		},
+		{
+			"name": "clientSecret",
+			"required": false,
+			"type": "String"
+		},
+		{
+			"name": "authEndpoint",
+			"required": false,
+			"type": "String"
+		},
+		{
+			"name": "tokenEndpoint",
+			"required": false,
+			"type": "String"
+		},
+		{
+			"name": "redirectUri",
+			"required": false,
+			"type": "String"
+		},
+		{
+			"name": "scopes",
+			"required": false,
+			"type": "String"
+		},
+		{
+			"name": "allowedEndpoints",
+			"required": true,
+			"type": "LongText"
+		},
+		{
+			"name": "tokenReuseEnabled",
+			"required": false,
+			"type": "Boolean"
+		},
+		{
+			"name": "enabled",
+			"required": true,
+			"type": "Boolean"
+		}
+	]
 }
