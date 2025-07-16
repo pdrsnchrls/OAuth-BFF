@@ -9,6 +9,9 @@ import com.liferay.portal.kernel.log.LogFactoryUtil;
 
 import java.io.InputStream;
 
+import java.util.Objects;
+import java.util.regex.Pattern;
+
 import javax.servlet.http.HttpServletRequest;
 
 import javax.ws.rs.Consumes;
@@ -132,24 +135,79 @@ public class OAuthProxyController {
 		return queryString;
 	}
 
+	private String[] _getSanitizedSegments(String path) {
+		String sanitizedPath = path;
+
+		if (sanitizedPath.startsWith("/")) {
+			sanitizedPath = sanitizedPath.substring(1);
+		}
+
+		if (sanitizedPath.endsWith("/")) {
+			sanitizedPath = sanitizedPath.substring(
+				0, sanitizedPath.length() - 1);
+		}
+
+		if (sanitizedPath.isEmpty()) {
+			return new String[0];
+		}
+
+		return sanitizedPath.split("/");
+	}
+
 	private boolean _isPathAllowed(OAuthClient client, String proxyPath) {
 		String normalizedPath =
 			proxyPath.startsWith("/") ? proxyPath : "/" + proxyPath;
 
-		if (client.getAllowedEndpoints(
-			).stream(
-			).map(
-				endpoint -> endpoint.startsWith("/") ? endpoint : "/" + endpoint
-			).anyMatch(
-				allowed ->
-					normalizedPath.equals(allowed) ||
-					normalizedPath.startsWith(allowed + "/")
-			)) {
+		return client.getAllowedEndpoints(
+		).stream(
+		).map(
+			endpoint -> endpoint.startsWith("/") ? endpoint : "/" + endpoint
+		).anyMatch(
+			allowedEndpoint -> {
+				if (_inlineVariablePattern.matcher(
+						allowedEndpoint
+					).find()) {
 
-			return true;
+					return _pathsMatch(allowedEndpoint, normalizedPath);
+				}
+
+				if (normalizedPath.equals(allowedEndpoint) ||
+					normalizedPath.startsWith(allowedEndpoint + "/")) {
+
+					return true;
+				}
+
+				return false;
+			}
+		);
+	}
+
+	private boolean _pathsMatch(String pattern, String path) {
+		String[] patternSegments = _getSanitizedSegments(pattern);
+		String[] pathSegments = _getSanitizedSegments(path);
+
+		if (patternSegments.length != pathSegments.length) {
+			return false;
 		}
 
-		return false;
+		for (int i = 0; i < patternSegments.length; i++) {
+			String patternSegment = patternSegments[i];
+			String pathSegment = pathSegments[i];
+
+			if (_inlineVariablePattern.matcher(
+					patternSegment
+				).matches()) {
+
+				if (pathSegment.isEmpty()) {
+					return false;
+				}
+			}
+			else if (!Objects.equals(patternSegment, pathSegment)) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	private Response _proxyRequest(
@@ -211,6 +269,9 @@ public class OAuthProxyController {
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		OAuthProxyController.class);
+
+	private static final Pattern _inlineVariablePattern = Pattern.compile(
+		"\\{[^/]+}");
 
 	@Reference
 	private OAuthClientResolver _oAuthClientResolver;
