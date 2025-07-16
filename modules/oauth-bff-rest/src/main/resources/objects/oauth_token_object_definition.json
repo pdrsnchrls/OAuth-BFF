@@ -1,6 +1,6 @@
 {
 	"label": {
-		"en_US": "OAuth Token"
+		"[$LOCALE_LABEL]": "OAuth Token"
 	},
 	"name": "OAuthToken",
 	"objectFields": [

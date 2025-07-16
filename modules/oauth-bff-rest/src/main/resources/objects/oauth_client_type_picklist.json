@@ -6,7 +6,7 @@
 			"key": "clientCredentials",
 			"name": "Client Credentials",
 			"name_i18n": {
-				"en_US": "Client Credentials"
+				"[$LOCALE_LABEL]": "Client Credentials"
 			}
 		},
 		{
@@ -14,7 +14,7 @@
 			"key": "authorizationCode",
 			"name": "Authorization Code",
 			"name_i18n": {
-				"en_US": "Authorization Code"
+				"[$LOCALE_LABEL]": "Authorization Code"
 			}
 		},
 		{
@@ -22,7 +22,7 @@
 			"key": "oidcSession",
 			"name": "OIDC Session",
 			"name_i18n": {
-				"en_US": "OIDC Session"
+				"[$LOCALE_LABEL]": "OIDC Session"
 			}
 		},
 		{
@@ -30,12 +30,12 @@
 			"key": "basicAuth",
 			"name": "Basic Authentication",
 			"name_i18n": {
-				"en_US": "Basic Authentication"
+				"[$LOCALE_LABEL]": "Basic Authentication"
 			}
 		}
 	],
 	"name": "OAuth Client Type",
 	"name_i18n": {
-		"en_US": "OAuth Client Type"
+		"[$LOCALE_LABEL]": "OAuth Client Type"
 	}
 }
