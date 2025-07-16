@@ -57,20 +57,17 @@ public class OAuthObjectInstaller {
 				return;
 			}
 
-			Company company = _companyLocalService.getCompanies(
-			).get(
-				0
-			);
+			for (Company company : _companyLocalService.getCompanies()) {
+				_companyId = company.getCompanyId();
 
-			_companyId = company.getCompanyId();
+				_userId = _userLocalService.getDefaultUserId(_companyId);
 
-			_userId = _userLocalService.getDefaultUserId(_companyId);
+				_installPicklist("oauth_client_type_picklist.json");
+				_installPicklist("oauth_owner_type_picklist.json");
 
-			_installPicklist("oauth_client_type_picklist.json");
-			_installPicklist("oauth_owner_type_picklist.json");
-
-			_installObjectDefinition("oauth_client_object_definition.json");
-			_installObjectDefinition("oauth_token_object_definition.json");
+				_installObjectDefinition("oauth_client_object_definition.json");
+				_installObjectDefinition("oauth_token_object_definition.json");
+			}
 		}
 		catch (Exception exception) {
 			throw new RuntimeException(
@@ -166,25 +163,25 @@ public class OAuthObjectInstaller {
 			ObjectDefinition objectDefinition = null;
 
 			try {
-                objectDefinition = _objectDefinitionLocalService.addCustomObjectDefinition(
+				objectDefinition = _objectDefinitionLocalService.addCustomObjectDefinition(
 						_userId,
-                        0,
-                        "",
-                        false, // enableComments
-                        false, // enableFriendlyURLCustomization
-                        false, // enableIndexSearch
-                        false, // enableLocalization
-                        false, // enableObjectEntryDraft
-                        Map.of(LocaleUtil.US, name),
-                        name,
-                        "100",
-                        "category.oauthbff",
-                        Map.of(LocaleUtil.US, name + "s"),
-                        false,
-                        "company",
-                        "default",
-                        List.of()
-                );
+						0,
+						"",
+						false, // enableComments
+						false, // enableFriendlyURLCustomization
+						false, // enableIndexSearch
+						false, // enableLocalization
+						false, // enableObjectEntryDraft
+						Map.of(LocaleUtil.US, name),
+						name,
+						"100",
+						"category.oauthbff",
+						Map.of(LocaleUtil.US, name + "s"),
+						false,
+						"company",
+						"default",
+						List.of()
+				);
 
 				JSONArray fields = jsonObject.getJSONArray("objectFields");
 
